@@ -16,12 +16,18 @@ A supporting written report (`deep_RL_compte_rendu1.pdf`) summarizes theoretical
 - Réalisé par : Mohamed Zaim
 - Master : Machine Learning Avancé et Intelligence Multimédia (MLAIM)
 
-_ Dans le cadre du cours de Reinforcement Learning, ce travail a pour objectif d’implémenter et d’analyser deux algorithmes fondamentaux des méthodes de planification basées sur modèle :
+_Introduction._ Dans le cadre du cours de Reinforcement Learning, ce travail a pour objectif d’implémenter et d’analyser deux algorithmes fondamentaux des méthodes de planification basées sur modèle :
 - Value Iteration (Itération de Valeur)
 - Policy Iteration (Itération de Politique)
 
 Ces deux approches permettent de trouver la politique optimale dans un environnement de type Markov Decision Process (MDP).
 
+> NOTE: Some filenames intentionally retain the original "Frosen" spelling to match coursework submission artifacts.
+
+---
+## Resources / Ressources
+- Report / Compte rendu (PDF): [deep_RL_compte_rendu1.pdf](./deep_RL_compte_rendu1.pdf)
+- Demo Video / Vidéo de démonstration: [video.mp4](./video.mp4)
 
 ---
 ## 1. Environment & Problem Setting
