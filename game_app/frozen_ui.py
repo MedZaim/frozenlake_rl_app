@@ -287,39 +287,35 @@ class FrozenLakeUI:
         def worker():
             try:
                 base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-                nb_in = os.path.join(base_dir, "game_app", "notebook", "Frosen_POLICY_ITERATION_to_call.ipynb")
-                if not os.path.exists(nb_in):
-                    messagebox.showerror("Missing", f"Notebook not found:\n{nb_in}")
-                    self.status_var.set("Notebook missing"); return
                 out_dir = os.path.join(base_dir, "notebook"); os.makedirs(out_dir, exist_ok=True)
                 nb_out = os.path.join(out_dir, "Frosen_POLICY_ITERATION_out.ipynb")
                 py = sys.executable or "python"
-                chk = subprocess.run([py, "-c", "import papermill"], cwd=base_dir)
-                if chk.returncode != 0:
-                    if not messagebox.askyesno("Papermill", "Papermill not installed. Install now?"):
-                        self.status_var.set("Papermill missing"); return
-                    self.status_var.set("Installing papermill…")
-                    inst = subprocess.run([py, "-m", "pip", "install", "papermill"], cwd=base_dir, capture_output=True, text=True)
-                    if inst.returncode != 0:
-                        messagebox.showerror("Install Failed", inst.stderr or inst.stdout)
-                        self.status_var.set("Install failed"); return
+                # Ensure papermill installed
+                if subprocess.run([py, "-c", "import papermill"], cwd=base_dir).returncode != 0:
+                    subprocess.run([py, "-m", "pip", "install", "papermill"], cwd=base_dir)
+                # Ensure nbformat installed
+                try:
+                    import nbformat  # type: ignore
+                except Exception:
+                    subprocess.run([py, "-m", "pip", "install", "nbformat"], cwd=base_dir)
+                    import nbformat  # type: ignore
+                # Collect current params from UI/env
                 rows=self.cfg.rows; cols=self.cfg.cols; sr,sc=self.cfg.start; gr,gc=self.cfg.goal
                 holes=[(int(r),int(c)) for r,c in self.cfg.holes]
-                # Build map description from current config
+                # Build map description
                 grid=[["F" for _ in range(cols)] for _ in range(rows)]
                 grid[sr][sc]="S"; grid[gr][gc]="G"
                 for hr,hc in holes:
                     if (hr,hc) not in [(sr,sc),(gr,gc)]: grid[hr][hc]="H"
                 map_desc=["".join(row) for row in grid]
-                # Agent current state (may differ from start)
                 cur_idx = int(self.env.state)
                 cur_r, cur_c = self.env.index_to_rc(cur_idx)
                 params={
                     "rows": int(rows),
                     "cols": int(cols),
-                    "start": (int(sr),int(sc)),
-                    "goal": (int(gr),int(gc)),
-                    "holes": holes,
+                    "start": [int(sr),int(sc)],
+                    "goal": [int(gr),int(gc)],
+                    "holes": [[int(r),int(c)] for r,c in holes],
                     "slippery": bool(self.cfg.slippery),
                     "slip_prob": float(self.cfg.slip_prob),
                     "gamma": float(self.cfg.gamma),
@@ -329,82 +325,73 @@ class FrozenLakeUI:
                     "current_row": int(cur_r),
                     "current_col": int(cur_c),
                 }
-                # Create a JSON-friendly copy for papermill: tuples -> lists
-                def _pm_convert(val):
-                    if isinstance(val, tuple):
-                        return list(val)
-                    if isinstance(val, list):
-                        new = []
-                        for item in val:
-                            if isinstance(item, tuple):
-                                new.append(list(item))
-                            else:
-                                new.append(item)
-                        return new
-                    return val
-                params_for_pm = {k: _pm_convert(v) for k, v in params.items()}
-                import json
-                param_file = os.path.join(base_dir, "game_app", "notebook", "params.json")
-                with open(param_file, "w") as f:
-                    json.dump(params_for_pm, f, indent=2)
-                self.status_var.set(f"Running notebook with params:\n{params_for_pm}")
-                import time
-                time.sleep(1)
-                # Prepare notebook: ensure it has a parameters cell (create temporary copy if needed)
-                try:
-                    import nbformat
-                except Exception:
-                    # try to install nbformat
-                    subprocess.run([py, "-m", "pip", "install", "nbformat"], cwd=base_dir)
-                    import nbformat
-                nb = nbformat.read(nb_in, as_version=4)
-                has_params = False
-                for cell in nb.cells:
-                    tags = cell.get('metadata', {}).get('tags', [])
-                    if isinstance(tags, list) and 'parameters' in tags:
-                        has_params = True
-                        break
-                nb_to_run = nb_in
-                temp_nb = None
-                if not has_params:
-                    # Create a parameters cell at the top using Python literals (lists, numbers, bools)
-                    def _literal(v):
-                        # repr is fine for basic types (lists, numbers, booleans, strings)
-                        return repr(v)
-                    param_lines = [f"{k} = {_literal(v)}" for k, v in params_for_pm.items()]
-                    param_src = "\n".join(param_lines)
-                    new_cell = nbformat.v4.new_code_cell(param_src)
-                    new_cell['metadata'] = new_cell.get('metadata', {})
-                    new_cell['metadata'].setdefault('tags', [])
-                    new_cell['metadata']['tags'].append('parameters')
-                    nb.cells.insert(0, new_cell)
-                    import tempfile
-                    fd, temp_path = tempfile.mkstemp(prefix='pm_input_', suffix='.ipynb', dir=out_dir)
-                    os.close(fd)
-                    nbformat.write(nb, temp_path)
-                    nb_to_run = temp_path
-                    temp_nb = temp_path
-                # Run the notebook with papermill using the chosen notebook file
-                import papermill as pm
-                pm.execute_notebook(nb_to_run, nb_out, parameters=params_for_pm)
-                # remove temporary notebook if created
-                try:
-                    if temp_nb and os.path.exists(temp_nb):
-                        os.remove(temp_nb)
-                except Exception:
-                    pass
-                self.status_var.set(f"Notebook run complete:\n{nb_out}")
-                # Optionally, open the output notebook
-                if messagebox.askyesno("Open Notebook", "Open the output notebook?"):
-                    if sys.platform == "win32":
-                        os.startfile(nb_out)
-                    elif sys.platform == "darwin":
-                        subprocess.run(["open", nb_out])
-                    else:
-                        subprocess.run(["xdg-open", nb_out])
+                # Build a minimal notebook with one parameters cell and one run cell
+                nb = nbformat.v4.new_notebook()
+                params_src = "\n".join([
+                    f"{k} = {repr(v)}" for k, v in params.items()
+                ])
+                c_params = nbformat.v4.new_code_cell(params_src, metadata={"tags":["parameters"]})
+                run_src = (
+                    "import numpy as np, time\n"
+                    "try:\n    import gymnasium as gym\nexcept ImportError:\n    import gym\n"
+                    "# Ensure types\n"
+                    "start = (int(start[0]), int(start[1]))\n"
+                    "goal = (int(goal[0]), int(goal[1]))\n"
+                    "holes = [(int(r), int(c)) for r,c in holes]\n"
+                    "# Build desc if not provided\n"
+                    "def build_desc(rows, cols, start, goal, holes):\n"
+                    "    arr = np.full((rows, cols), 'F', dtype='<U1')\n"
+                    "    sr, sc = start; gr, gc = goal\n"
+                    "    arr[sr, sc] = 'S'; arr[gr, gc] = 'G'\n"
+                    "    for hr, hc in holes: arr[hr, hc] = 'H'\n"
+                    "    return [''.join(r) for r in arr]\n"
+                    "if map_desc is None:\n    map_desc = build_desc(rows, cols, start, goal, holes)\n"
+                    "env = gym.make('FrozenLake-v1', is_slippery=bool(slippery), desc=map_desc, render_mode='human')\n"
+                    "env.reset()\n"
+                    "if current_state is not None:\n    try: env.unwrapped.s = int(current_state)\n    except Exception: pass\n"
+                    "elif (current_row is not None) and (current_col is not None):\n"
+                    "    try: env.unwrapped.s = int(current_row)*cols + int(current_col)\n    except Exception: pass\n"
+                    "else:\n    try: env.unwrapped.s = start[0]*cols + start[1]\n    except Exception: pass\n"
+                    "P = env.unwrapped.P\n"
+                    "nS = env.observation_space.n; nA = env.action_space.n\n"
+                    "def policy_evaluation(pi, V=None, gamma=gamma, theta=theta):\n"
+                    "    if V is None: V = np.zeros(nS, dtype=float)\n"
+                    "    else: V = np.array(V, dtype=float, copy=True)\n"
+                    "    while True:\n        delta=0.0\n        for s in range(nS):\n            v_old=V[s]; a=pi[s]; v_new=0.0\n            for (prob, ns, r, done) in P[s][a]:\n                v_new += prob * (r + gamma * (0.0 if done else V[ns]))\n            V[s]=v_new; delta=max(delta, abs(v_old-v_new))\n        if delta<theta: break\n    return V\n"
+                    "def policy_improvement(V, gamma=gamma):\n    pi = np.zeros(nS, dtype=int)\n    for s in range(nS):\n        q = np.zeros(nA, dtype=float)\n        for a in range(nA):\n            for (prob, ns, r, done) in P[s][a]:\n                q[a] += prob * (r + gamma * (0.0 if done else V[ns]))\n        pi[s] = int(np.argmax(q))\n    return pi\n"
+                    "def policy_iteration(gamma=gamma, theta=theta):\n    pi = np.random.randint(0, nA, size=nS, dtype=int)\n    V = np.zeros(nS, dtype=float)\n    iters=0\n    while True:\n        iters+=1\n        V = policy_evaluation(pi, V, gamma=gamma, theta=theta)\n        new_pi = policy_improvement(V, gamma=gamma)\n        if np.array_equal(pi, new_pi):\n            pi=new_pi; break\n        pi=new_pi\n    return pi, V, iters\n"
+                    "pi_opt, V_opt, iters = policy_iteration(gamma=gamma, theta=theta)\n"
+                    "def run_episode(env, pi):\n    obs, info = env.reset()\n    if current_state is not None:\n        try: env.unwrapped.s = int(current_state); obs = env.unwrapped.s\n        except Exception: pass\n    elif (current_row is not None) and (current_col is not None):\n        try: env.unwrapped.s = int(current_row)*cols + int(current_col); obs = env.unwrapped.s\n        except Exception: pass\n    terminated = truncated = False; total = 0.0; steps = 0\n    while not (terminated or truncated):\n        a = int(pi[obs])\n        obs, r, terminated, truncated, info = env.step(a)\n        total += r; steps += 1\n    return total, steps, terminated, truncated\n"
+                    "total_reward, steps, terminated, truncated = run_episode(env, pi_opt)\n"
+                    "print(f'Episode -> reward: {total_reward}, steps: {steps}, terminated: {terminated}, truncated: {truncated}')\n"
+                    "print(f'Converged in {iters} iterations')\n"
+                    "print('Optimal V (reshaped):')\n"
+                    "try:\n    gridV = V_opt.reshape(rows, cols)\n    print(np.round(gridV, 3))\nexcept Exception:\n    print(np.round(V_opt, 3))\n"
+                    "arrow_map = {0:'\u2190',1:'\u2193',2:'\u2192',3:'\u2191'}\n"
+                    "print('\nOptimal Policy:')\n"
+                    "try:\n    gridPi = np.array([arrow_map[a] for a in pi_opt]).reshape(rows, cols)\n    for r in range(rows): print(' '.join(gridPi[r]))\nexcept Exception:\n    print(pi_opt)\n"
+                    "# Keep window responsive briefly then close\n"
+                    "try:\n    import pygame\n    for _ in range(80):\n        pygame.event.pump(); time.sleep(0.03)\nexcept Exception:\n    time.sleep(2.0)\n"
+                    "env.close()\n"
+                )
+                c_run = nbformat.v4.new_code_cell(run_src)
+                nb.cells = [c_params, c_run]
+                # Write to a temporary file
+                import tempfile
+                fd, temp_nb_path = tempfile.mkstemp(prefix='pm_min_', suffix='.ipynb', dir=out_dir)
+                os.close(fd)
+                nbformat.write(nb, temp_nb_path)
+                # Execute
+                self.status_var.set("Executing policy iteration notebook…")
+                import papermill as pm  # type: ignore
+                pm.execute_notebook(temp_nb_path, nb_out, parameters=params)
+                # Cleanup temp
+                try: os.remove(temp_nb_path)
+                except Exception: pass
+                self.status_var.set(f"Notebook run complete: {nb_out}")
+                messagebox.showinfo("Notebook", f"Output saved to:\n{nb_out}")
             except Exception as e:
-                messagebox.showerror("Error", str(e))
-        # Run the notebook worker in a separate thread to avoid blocking the UI
+                messagebox.showerror("Notebook Error", str(e))
         threading.Thread(target=worker, daemon=True).start()
 
     def _update_status(self):
