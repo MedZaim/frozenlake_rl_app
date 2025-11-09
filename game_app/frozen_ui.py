@@ -299,6 +299,12 @@ class FrozenLakeUI:
                 except Exception:
                     subprocess.run([py, "-m", "pip", "install", "nbformat"], cwd=base_dir)
                     import nbformat  # type: ignore
+                # Ensure ipykernel installed (needed by papermill to execute notebooks)
+                try:
+                    import ipykernel  # type: ignore
+                except Exception:
+                    subprocess.run([py, "-m", "pip", "install", "ipykernel"], cwd=base_dir)
+                    import ipykernel  # type: ignore
                 # Collect current params from UI/env
                 rows=self.cfg.rows; cols=self.cfg.cols; sr,sc=self.cfg.start; gr,gc=self.cfg.goal
                 holes=[(int(r),int(c)) for r,c in self.cfg.holes]
@@ -327,6 +333,16 @@ class FrozenLakeUI:
                 }
                 # Build a minimal notebook with one parameters cell and one run cell
                 nb = nbformat.v4.new_notebook()
+                # Set kernelspec so papermill knows which kernel to use
+                nb.metadata["kernelspec"] = {
+                    "name": "python3",
+                    "language": "python",
+                    "display_name": "Python 3"
+                }
+                nb.metadata["language_info"] = {
+                    "name": "python",
+                    "pygments_lexer": "ipython3"
+                }
                 params_src = "\n".join([
                     f"{k} = {repr(v)}" for k, v in params.items()
                 ])
@@ -363,12 +379,12 @@ class FrozenLakeUI:
                     "pi_opt, V_opt, iters = policy_iteration(gamma=gamma, theta=theta)\n"
                     "def run_episode(env, pi):\n    obs, info = env.reset()\n    if current_state is not None:\n        try: env.unwrapped.s = int(current_state); obs = env.unwrapped.s\n        except Exception: pass\n    elif (current_row is not None) and (current_col is not None):\n        try: env.unwrapped.s = int(current_row)*cols + int(current_col); obs = env.unwrapped.s\n        except Exception: pass\n    terminated = truncated = False; total = 0.0; steps = 0\n    while not (terminated or truncated):\n        a = int(pi[obs])\n        obs, r, terminated, truncated, info = env.step(a)\n        total += r; steps += 1\n    return total, steps, terminated, truncated\n"
                     "total_reward, steps, terminated, truncated = run_episode(env, pi_opt)\n"
-                    "print(f'Episode -> reward: {total_reward}, steps: {steps}, terminated: {terminated}, truncated: {truncated}')\n"
-                    "print(f'Converged in {iters} iterations')\n"
+                    "print('Episode -> reward:', total_reward, 'steps:', steps, 'terminated:', terminated, 'truncated:', truncated)\n"
+                    "print('Converged in', iters, 'iterations')\n"
                     "print('Optimal V (reshaped):')\n"
                     "try:\n    gridV = V_opt.reshape(rows, cols)\n    print(np.round(gridV, 3))\nexcept Exception:\n    print(np.round(V_opt, 3))\n"
-                    "arrow_map = {0:'\u2190',1:'\u2193',2:'\u2192',3:'\u2191'}\n"
-                    "print('\nOptimal Policy:')\n"
+                    "arrow_map = {0: chr(0x2190), 1: chr(0x2193), 2: chr(0x2192), 3: chr(0x2191)}\n"
+                    "print()\nprint('Optimal Policy:')\n"
                     "try:\n    gridPi = np.array([arrow_map[a] for a in pi_opt]).reshape(rows, cols)\n    for r in range(rows): print(' '.join(gridPi[r]))\nexcept Exception:\n    print(pi_opt)\n"
                     "# Keep window responsive briefly then close\n"
                     "try:\n    import pygame\n    for _ in range(80):\n        pygame.event.pump(); time.sleep(0.03)\nexcept Exception:\n    time.sleep(2.0)\n"
@@ -384,7 +400,7 @@ class FrozenLakeUI:
                 # Execute
                 self.status_var.set("Executing policy iteration notebook…")
                 import papermill as pm  # type: ignore
-                pm.execute_notebook(temp_nb_path, nb_out, parameters=params)
+                pm.execute_notebook(temp_nb_path, nb_out, parameters=params, kernel_name="python3")
                 # Cleanup temp
                 try: os.remove(temp_nb_path)
                 except Exception: pass
