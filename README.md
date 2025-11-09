@@ -29,6 +29,12 @@ Ces deux approches permettent de trouver la politique optimale dans un environne
 - Report / Compte rendu (PDF): [deep_RL_compte_rendu1.pdf](./deep_RL_compte_rendu1.pdf)
 - Demo Video / Vidéo de démonstration: [video.mp4](./video.mp4)
 
+Inline demo (plays on GitHub):
+
+<video src="./video.mp4" controls title="FrozenLake RL demo" width="720">
+  Your browser does not support the video tag. You can download it here: <a href="./video.mp4">video.mp4</a>.
+</video>
+
 ---
 ## 1. Environment & Problem Setting
 
