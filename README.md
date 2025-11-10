@@ -28,8 +28,8 @@ Ces deux approches permettent de trouver la politique optimale dans un environne
 ## Resources / Ressources
 - Report / Compte rendu (PDF): [deep_RL_compte_rendu1.pdf](./deep_RL_compte_rendu1.pdf)
 - Notebooks:
-  - [frozen_VALUE_ITERATION.ipynb](./frosen_VALUE_ITERATION.ipynb)
-  - [Frozen_POLICY_ITERATION.ipynb](./Frosen_POLICY_ITERATION.ipynb)
+  - [frozen_VALUE_ITERATION.ipynb](./frozen_VALUE_ITERATION.ipynb)
+  - [Frozen_POLICY_ITERATION.ipynb](./Frozen_POLICY_ITERATION.ipynb)
 - Requirements: [requirements.txt](./requirements.txt) (primarily `gym` or `gymnasium`, `numpy`, `matplotlib`)
 
 ## 🎥 FrozenLake RL Demo
