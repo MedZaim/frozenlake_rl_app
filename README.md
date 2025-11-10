@@ -2,8 +2,8 @@
 
 This repository is a focused study of **dynamic programming methods** for solving finite Markov Decision Processes (MDPs) applied to the classic **FrozenLake-v1** environment (custom maps) from Gym / Gymnasium. It centers on two core algorithms:
 
-- `frosen_VALUE_ITERATION.ipynb` – iterative Bellman optimality updates to converge directly to the optimal value function and greedy policy.
-- `Frosen_POLICY_ITERATION.ipynb` – classic policy iteration loop alternating policy evaluation and policy improvement until convergence.
+- `frozen_VALUE_ITERATION.ipynb` – iterative Bellman optimality updates to converge directly to the optimal value function and greedy policy.
+- `Frozen_POLICY_ITERATION.ipynb` – classic policy iteration loop alternating policy evaluation and policy improvement until convergence.
 
 A supporting written report (`deep_RL_compte_rendu1.pdf`) summarizes theoretical background, convergence behavior, and compares both algorithms empirically.
 
