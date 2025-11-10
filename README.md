@@ -12,7 +12,7 @@ A supporting written report (`deep_RL_compte_rendu1.pdf`) summarizes theoretical
 **Implémentation et Analyse des Algorithmes de Value Iteration et Policy Iteration sur l’Environnement FrozenLake**
 
 - Cours : Reinforcement Learning (Apprentissage par Renforcement)
-- Encadré par : Pr. Jamal Rifi
+- Encadré par : Pr. Jamal Riffi
 - Réalisé par : Mohamed Zaim
 - Master : Machine Learning Avancé et Intelligence Multimédia (MLAIM)
 
