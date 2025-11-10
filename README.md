@@ -34,12 +34,9 @@ Ces deux approches permettent de trouver la politique optimale dans un environne
 
 ## 🎥 FrozenLake RL Demo
 
-[![FrozenLake RL Demo](https://img.youtube.com/vi/57r_puXAYhg/0.jpg)](https://youtu.be/57r_puXAYhg)
+[![FrozenLake RL Demo](https://img.youtube.com/vi/57r_puXAYhg/maxresdefault.jpg)](https://youtu.be/57r_puXAYhg)
+**▶ Watch Video on YouTube**
 
-<iframe width="720" height="405"
-        src="https://www.youtube.com/embed/57r_puXAYhg"
-        title="FrozenLake RL demo"
-        />
 
 
 
